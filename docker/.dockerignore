@@ -1,0 +1,13 @@
+
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+verify_venv*/
+.git
+.gitignore
+*.jsonl
+docker/data/
+.pytest_cache/
+ 

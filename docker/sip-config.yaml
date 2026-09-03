@@ -1,0 +1,13 @@
+api_key: APIdjhUUPtHPsqy
+api_secret: Cc0g5XMaHrpTc4OwSXaxDQv8fqai3Wd7NAMIohrI8wE
+ws_url: ws://localhost:7880
+
+redis:
+  address: localhost:6379
+
+sip_port: 5060
+rtp_port: 10000-20000
+use_external_ip: false
+
+logging:
+  level: info

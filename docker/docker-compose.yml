@@ -1,0 +1,111 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:6379:6379"
+    volumes:
+      - redis-data:/data
+
+  livekit-server:
+    image: livekit/livekit-server:latest
+    restart: unless-stopped
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+    network_mode: "host"
+
+  livekit-sip:
+    image: livekit/sip:latest
+    restart: unless-stopped
+    command: --config /etc/sip-config.yaml
+    volumes:
+      - ./sip-config.yaml:/etc/sip-config.yaml:ro
+    depends_on:
+      - livekit-server
+      - redis
+    network_mode: "host"
+
+  # Local LLM (Ollama) - replaces Groq for the agent's LLM calls, removing
+  # the token-per-minute rate-limit ceiling that caused the multi-minute
+  # outages. network_mode: host to match every other service here - with
+  # host networking, Docker's internal service-name DNS (e.g. "ollama:11434")
+  # does NOT work, since there's no private bridge network; the agent
+  # reaches this via plain localhost instead (see .env LLM_BASE_URL below).
+  # Requires the NVIDIA Container Toolkit on the HOST (separate from the GPU
+  # driver - `nvidia-smi` working on the host doesn't by itself mean Docker
+  # can pass the GPU through):
+  # https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
+    network_mode: "host"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+ 
+  # --- The actual bot, previously missing from this compose file entirely ---
+  agent:
+    build:
+      context: ..              # project root, where agent.py etc. actually live
+      dockerfile: docker/Dockerfile  # path is relative to context, not to this file
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DB_PATH: /app/data/ai_medical.db
+    volumes:
+      - ./data:/app/data
+    # Host networking to match livekit-server/livekit-sip above - since
+    # LIVEKIT_URL in .env points at the host's LAN IP (e.g. 10.0.0.205:7880),
+    # this guarantees the agent container can reach it regardless of
+    # Docker's default bridge-network routing quirks.
+    network_mode: "host"
+    depends_on:
+      - livekit-server
+
+  # One-off outbound call trigger - not started by `docker compose up`.
+  # Run explicitly: docker compose --profile manual run --rm trigger --journey A --patient PAT-10021
+  trigger:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      DB_PATH: /app/data/ai_medical.db
+    volumes:
+      - ./data:/app/data
+    network_mode: "host"
+    entrypoint: ["python", "trigger_call.py"]
+    profiles: ["manual"]
+
+  # Web dashboard - view/add patients & appointments, trigger calls, review
+  # the activity log with transcripts. Runs continuously (not a manual profile).
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DB_PATH: /app/data/ai_medical.db
+    volumes:
+      - ./data:/app/data
+    network_mode: "host"
+    entrypoint: ["uvicorn", "web_app:app", "--host", "0.0.0.0", "--port", "8080"]
+    depends_on:
+      - livekit-server
+
+volumes:
+  redis-data:
+  ollama-models:

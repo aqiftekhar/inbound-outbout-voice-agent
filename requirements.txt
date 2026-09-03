@@ -1,0 +1,19 @@
+# Pinned to versions verified to install and import cleanly together
+# (checked against the real SDK before shipping, not guessed).
+# Regenerate with `pip freeze` after any deliberate upgrade, and re-run
+# tests/test_journeys.py + a manual smoke call before deploying an upgrade.
+
+livekit-agents==1.6.10
+livekit-api==1.2.0
+livekit==1.1.14
+livekit-plugins-deepgram==1.6.10
+livekit-plugins-openai==1.6.10
+livekit-plugins-elevenlabs==1.6.10
+livekit-plugins-silero==1.6.10
+livekit-plugins-noise-cancellation==0.3.0
+python-dotenv==1.2.3
+
+# --- Web dashboard ---
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+python-multipart==0.0.32

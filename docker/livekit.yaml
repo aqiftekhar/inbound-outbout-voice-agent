@@ -1,0 +1,18 @@
+port: 7880
+ 
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 60000
+  use_external_ip: false
+ 
+redis:
+  address: localhost:6379
+ 
+keys:
+  # Same key/secret already in both bot projects' .env files - no .env
+  # changes needed in either project if you use this config as-is.
+  APIdjhUUPtHPsqy: Cc0g5XMaHrpTc4OwSXaxDQv8fqai3Wd7NAMIohrI8wE
+ 
+log_level: info
+ 
